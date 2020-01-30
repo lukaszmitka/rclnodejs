@@ -458,6 +458,122 @@ NAN_METHOD(CreateSubscription) {
   }
 }
 
+NAN_METHOD(RclActionTakeFeedback)
+{
+  RclHandle *action_handle =
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject());
+  rcl_action_client_t *action_client =
+      reinterpret_cast<rcl_action_client_t *>(action_handle->ptr());
+  void *feedback_taken = node::Buffer::Data(info[1]->ToObject());
+
+  rcl_ret_t ret = rcl_action_take_feedback(action_client, feedback_taken);
+
+  if (ret != RCL_RET_OK && ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    Nan::ThrowError(rcl_get_error_string().str);
+    rcl_reset_error();
+    info.GetReturnValue().Set(Nan::False());
+    return;
+  }
+
+  if (ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    info.GetReturnValue().Set(Nan::True());
+    return;
+  }
+  info.GetReturnValue().Set(Nan::Undefined());
+}
+
+NAN_METHOD(RclActionTakeStatus)
+{
+  RclHandle *action_handle =
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject());
+  rcl_action_client_t *action_client =
+      reinterpret_cast<rcl_action_client_t *>(action_handle->ptr());
+
+  void *status_taken = node::Buffer::Data(info[1]->ToObject());
+  rcl_ret_t ret = rcl_action_take_status (action_client, status_taken);
+
+  if (ret != RCL_RET_OK && ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    info.GetReturnValue().Set(Nan::False());
+    return;
+  }
+  if (ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    info.GetReturnValue().Set(Nan::True());
+    return;
+  }
+  info.GetReturnValue().Set(Nan::Undefined());
+}
+
+void init_test_uuid0(uint8_t *uuid)
+{
+  for (uint8_t i = 0; i < UUID_SIZE; ++i)
+  {
+    uuid[i] = i;
+  }
+}
+
+NAN_METHOD(RclSendGoalRequest)
+{
+  rcl_action_client_t *client = reinterpret_cast<rcl_action_client_t *>(
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject())->ptr());
+  void *buffer = node::Buffer::Data(info[1]->ToObject());
+  int64_t sequence_number;
+  rcl_ret_t ret = rcl_action_send_goal_request(client, buffer, &sequence_number);
+  if (ret != RCL_RET_OK && ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    info.GetReturnValue().Set(Nan::False());
+    return;
+  }
+  if (ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  {
+    info.GetReturnValue().Set(Nan::True());
+    return;
+  }
+}
+
+NAN_METHOD(CreateActionClient)
+{
+  RclHandle *node_handle = RclHandle::Unwrap<RclHandle>(info[0]->ToObject());
+  rcl_node_t *node = reinterpret_cast<rcl_node_t *>(node_handle->ptr());
+  std::string action_name(*Nan::Utf8String(info[1]->ToString()));
+  std::string package_name(*Nan::Utf8String(info[2]->ToString()));
+
+  rcl_action_client_t *action_client =
+      reinterpret_cast<rcl_action_client_t *>(malloc(sizeof(rcl_action_client_t)));
+  *action_client = rcl_action_get_zero_initialized_client();
+  rcl_action_client_options_t action_client_ops = rcl_action_client_get_default_options();
+  auto qos_profile = GetQoSProfile(info[3]);
+  if (qos_profile)
+  {
+    action_client_ops.goal_service_qos = *qos_profile;
+    action_client_ops.result_service_qos = *qos_profile;
+    action_client_ops.cancel_service_qos = *qos_profile;
+    action_client_ops.feedback_topic_qos = *qos_profile;
+    action_client_ops.status_topic_qos = *qos_profile;
+  }
+  const rosidl_action_type_support_t *ts = GetActionTypeSupport(package_name, action_name);
+
+  THROW_ERROR_IF_NOT_EQUAL(
+      RCL_RET_OK,
+      rcl_action_client_init(
+          action_client,
+          node,
+          ts,
+          action_name.c_str(),
+          &action_client_ops),
+      rcl_get_error_string().str);
+
+  auto js_obj =
+      RclHandle::NewInstance(action_client, node_handle, [action_client, node] {
+        return rcl_action_client_fini(action_client, node);
+      });
+
+  info.GetReturnValue().Set(js_obj);
+}
+
 NAN_METHOD(CreatePublisher) {
   // Extract arguments
   RclHandle* node_handle = RclHandle::Unwrap<RclHandle>(info[0]->ToObject());
@@ -1269,6 +1385,10 @@ BindingMethod binding_methods[] = {
     {"getRosTimeOverrideIsEnabled", GetRosTimeOverrideIsEnabled},
     {"rclTake", RclTake},
     {"createSubscription", CreateSubscription},
+    {"rclActionTakeFeedback", RclActionTakeFeedback},
+    {"rclActionTakeStatus", RclActionTakeStatus},
+    {"rclSendGoalRequest", RclSendGoalRequest},
+    {"createActionClient", CreateActionClient},
     {"createPublisher", CreatePublisher},
     {"publish", Publish},
     {"createClient", CreateClient},

@@ -6,7 +6,10 @@
 *.pyc
 *.tar.gz
 *.log
+.vscode
 build
+install
+log
 cscope.*
 gen
 node_modules
@@ -14,4 +17,5 @@ npm-debug.log
 tags
 cpplint.py
 generated
+undefined
 dist

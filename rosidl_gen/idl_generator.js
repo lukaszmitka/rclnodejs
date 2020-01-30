@@ -15,6 +15,7 @@
 'use strict';
 
 const dot = require('dot');
+const fs = require('fs');
 const fse = require('fs-extra');
 const path = require('path');
 const parser = require('../rosidl_parser/rosidl_parser.js');
@@ -30,6 +31,74 @@ function removeExtraSpaceLines(str) {
 async function writeGeneratedCode(dir, fileName, code) {
   await fse.mkdirs(dir);
   await fse.writeFile(path.join(dir, fileName), code);
+}
+
+function parseActionFile(actionFile) {
+  let actionFileArray = actionFile.split("\n")
+  let actionDefinition = {
+    // Goal always have the goal_id component
+    // it is not included in action definition
+    // but it has to be in goal message definition
+    goal: ['unique_identifier_msgs/UUID goal_id'],
+    result: [],
+    feedback: []
+  }
+  let grf = 0;
+  actionFileArray.forEach(line => {
+    // Comments in action file begins with '#'
+    if (line.charAt(0) != '#') {
+      // goal, result, feedback fields are separated with '---' line
+      if (line.trim() == '---') {
+        grf++;
+      } else {
+        switch (grf) {
+          case 0:
+            actionDefinition.goal.push(line);
+            break;
+          case 1:
+            actionDefinition.result.push(line);
+            break;
+          case 2:
+            actionDefinition.feedback.push(line);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  });
+  return actionDefinition;
+}
+
+function generateActionMsgJSStruct(msg_definition, dir, actionInfo, msg_suffix) {
+  let goalMsgFilePath = path.join(dir, actionInfo.pkgName, `${actionInfo.interfaceName}` + msg_suffix + '.msg');
+  var stream = fs.createWriteStream(goalMsgFilePath, { flags: 'w' });
+  msg_definition.forEach(line => {
+    stream.write(line + "\n");
+  });
+  stream.end(async function () {
+    let messageInfo = {
+      pkgName: actionInfo.pkgName,
+      interfaceName: `${actionInfo.interfaceName}` + msg_suffix,
+      subFolder: 'action',
+      filePath: goalMsgFilePath
+    }
+    await generateMessageJSStruct(messageInfo, dir);
+    fs.unlinkSync(goalMsgFilePath)
+  });
+}
+
+async function generateActionJSStruct(actionInfo, dir) {
+  await fse.mkdirs(dir);
+  let actionFile = fs.readFileSync(actionInfo.filePath, 'utf8');
+  let actionDefinition = parseActionFile(actionFile);
+  generateActionMsgJSStruct(actionDefinition.goal, dir, actionInfo, '_Goal');
+  generateActionMsgJSStruct(actionDefinition.result, dir, actionInfo, '_Result');
+  generateActionMsgJSStruct(actionDefinition.feedback, dir, actionInfo, '_Feedback');
+  const generatedCode = removeExtraSpaceLines(dots.action({ actionInfo: actionInfo }));
+  dir = path.join(dir, `${actionInfo.pkgName}`);
+  const fileName = actionInfo.pkgName + '__' + actionInfo.subFolder + '__' + actionInfo.interfaceName + '.js';
+  return writeGeneratedCode(dir, fileName, generatedCode);
 }
 
 function generateServiceJSStruct(serviceInfo, dir) {
@@ -59,6 +128,9 @@ async function generateJSStructFromIDL(pkg, dir) {
   });
   pkg.services.forEach((serviceInfo) => {
     results.push(generateServiceJSStruct(serviceInfo, dir));
+  });
+  pkg.actions.forEach((actionInfo) => {
+    results.push(generateActionJSStruct(actionInfo, dir));
   });
   await Promise.all(results);
 }

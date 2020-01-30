@@ -17,6 +17,8 @@
 
 #include <nan.h>
 #include <rcl/rcl.h>
+#include <rcl_action/rcl_action.h>
+#include <rosidl_generator_c/action_type_support_struct.h>
 
 #include <string>
 

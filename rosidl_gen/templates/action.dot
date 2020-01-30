@@ -1,0 +1,38 @@
+'use strict';
+
+{{
+const className = it.actionInfo.pkgName + '__' + it.actionInfo.subFolder + '__' + it.actionInfo.interfaceName;
+const goalFileName = it.actionInfo.pkgName + '__action__' + it.actionInfo.interfaceName + '_Goal.js';
+const resultFileName = it.actionInfo.pkgName + '__action__' + it.actionInfo.interfaceName + '_Result.js';
+const feedbackFileName = it.actionInfo.pkgName + '__action__' + it.actionInfo.interfaceName + '_Feedback.js';
+
+}}
+
+class {{=className}} {
+  static get Goal() {
+    return require('./{{=goalFileName}}');
+  }
+
+  static get Result() {
+    return require('./{{=resultFileName}}');
+  }
+
+  static get Feedback() {
+    return require('./{{=feedbackFileName}}');
+  }
+
+  static get Status() {
+    return require('../action_msgs/action_msgs__msg__GoalStatusArray.js');
+  }
+
+  static get Cancel() {
+    return require('../action_msgs/action_msgs__srv__CancelGoal.js');
+  }
+
+  static type() {
+    return {pkgName: '{{=it.actionInfo.pkgName}}', subFolder: '{{=it.actionInfo.subFolder}}', interfaceName: '{{=it.actionInfo.interfaceName}}'};
+  }
+
+}
+
+module.exports = {{=className}};
