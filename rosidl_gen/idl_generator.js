@@ -40,7 +40,7 @@ function parseActionFile(actionFile) {
     // it is not included in action definition
     // but it has to be in goal message definition
     goal: ['unique_identifier_msgs/UUID goal_id'],
-    result: [],
+    result: ['action_msgs/GoalStatus status'],
     feedback: []
   }
   let grf = 0;

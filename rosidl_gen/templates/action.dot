@@ -13,7 +13,23 @@ class {{=className}} {
     return require('./{{=goalFileName}}');
   }
 
-  static get Result() {
+  static get GoalRes() {
+    return require('../action_msgs/action_msgs__msg__GoalInfo.js');
+  }
+
+  static get Cancel() {
+    return require('../action_msgs/action_msgs__srv__CancelGoalRequest.js');
+  }
+
+  static get CancelRes() {
+    return require('../action_msgs/action_msgs__srv__CancelGoalResponse.js');
+  }
+
+  static get ResultReq() {
+    return require('../action_msgs/action_msgs__msg__GoalInfo.js');
+  }
+
+  static get ResultRes() {
     return require('./{{=resultFileName}}');
   }
 
@@ -23,10 +39,6 @@ class {{=className}} {
 
   static get Status() {
     return require('../action_msgs/action_msgs__msg__GoalStatusArray.js');
-  }
-
-  static get Cancel() {
-    return require('../action_msgs/action_msgs__srv__CancelGoal.js');
   }
 
   static type() {

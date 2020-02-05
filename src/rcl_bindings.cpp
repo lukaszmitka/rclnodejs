@@ -522,16 +522,70 @@ NAN_METHOD(RclSendGoalRequest)
   void *buffer = node::Buffer::Data(info[1]->ToObject());
   int64_t sequence_number;
   rcl_ret_t ret = rcl_action_send_goal_request(client, buffer, &sequence_number);
-  if (ret != RCL_RET_OK && ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  if (ret == RCL_RET_OK)
   {
-    info.GetReturnValue().Set(Nan::False());
+    info.GetReturnValue().Set(Nan::New((uint32_t)sequence_number));
     return;
   }
-  if (ret != RCL_RET_SUBSCRIPTION_TAKE_FAILED)
+  info.GetReturnValue().Set(Nan::False());
+}
+
+NAN_METHOD(RclTakeGoalResponse) {
+  rcl_action_client_t *client = reinterpret_cast<rcl_action_client_t *>(
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject())->ptr());
+  int64_t sequence_number = info[1]->IntegerValue();
+  
+  rmw_request_id_t* header =
+      reinterpret_cast<rmw_request_id_t*>(malloc(sizeof(rmw_request_id_t)));
+  header->sequence_number = sequence_number;
+
+  void *taken_response = node::Buffer::Data(info[2]->ToObject());
+  rcl_ret_t ret = rcl_action_take_goal_response(client, header, taken_response);
+  free(header);
+
+  if (ret == RCL_RET_OK)
   {
     info.GetReturnValue().Set(Nan::True());
     return;
   }
+  info.GetReturnValue().Set(Nan::False());
+}
+
+NAN_METHOD(RclSendResultRequest)
+{
+  rcl_action_client_t *client = reinterpret_cast<rcl_action_client_t *>(
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject())->ptr());
+  void *buffer = node::Buffer::Data(info[1]->ToObject());
+  int64_t sequence_number;
+  rcl_ret_t ret = rcl_action_send_result_request(client, buffer, &sequence_number);
+  if (ret == RCL_RET_OK)
+  {
+    info.GetReturnValue().Set(Nan::New((uint32_t)sequence_number));
+    return;
+  }
+  info.GetReturnValue().Set(Nan::False());
+}
+
+NAN_METHOD(RclTakeResultResponse)
+{
+  rcl_action_client_t *client = reinterpret_cast<rcl_action_client_t *>(
+      RclHandle::Unwrap<RclHandle>(info[0]->ToObject())->ptr());
+  int64_t sequence_number = info[1]->IntegerValue();
+
+  rmw_request_id_t *header =
+      reinterpret_cast<rmw_request_id_t *>(malloc(sizeof(rmw_request_id_t)));
+  header->sequence_number = sequence_number;
+
+  void *taken_response = node::Buffer::Data(info[2]->ToObject());
+  rcl_ret_t ret = rcl_action_take_result_response(client, header, taken_response);
+  free(header);
+
+  if (ret == RCL_RET_OK)
+  {
+    info.GetReturnValue().Set(Nan::True());
+    return;
+  }
+  info.GetReturnValue().Set(Nan::False());
 }
 
 NAN_METHOD(CreateActionClient)
@@ -1388,6 +1442,9 @@ BindingMethod binding_methods[] = {
     {"rclActionTakeFeedback", RclActionTakeFeedback},
     {"rclActionTakeStatus", RclActionTakeStatus},
     {"rclSendGoalRequest", RclSendGoalRequest},
+    {"rclTakeGoalResponse", RclTakeGoalResponse},
+    {"rclSendResultRequest", RclSendResultRequest},
+    {"rclTakeResultResponse", RclTakeResultResponse},
     {"createActionClient", CreateActionClient},
     {"createPublisher", CreatePublisher},
     {"publish", Publish},
